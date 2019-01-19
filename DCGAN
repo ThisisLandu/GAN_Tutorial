@@ -1,3 +1,7 @@
+# number of image files : about 87000
+# size of images : 96 x 96 x 3
+# size of TFRecord 2.24GB
+
 import tensorflow as tf
 import numpy as np
 import os
