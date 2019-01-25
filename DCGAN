@@ -1,34 +1,35 @@
-#
-
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 import time
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 total_epoch = 30
 batch_size = 120
 learning_rate = 2e-4
-n_noise = 128       # z 노이즈 갯수
-alpha = 0.1         # Lrelu 계수
-Sample_H = 10       # 저장용 샘플 갯수    - 한번 저장되는 이미지 수 = Sample_H + Sample_W
-Sample_W = 4        # 저장용 샘플 갯수    - 한번 저장되는 이미지 수 = Sample_H + Sample_W
-prv_time=time.time()     # 시간출력용
-start_time=time.time()   # 시간출력용
+n_noise = 128  # z 노이즈 갯수
+alpha = 0.1  # Lrelu 계수
+Sample_H = 10  # 저장용 샘플 갯수    - 한번 저장되는 이미지 수 = Sample_H + Sample_W
+Sample_W = 4  # 저장용 샘플 갯수    - 한번 저장되는 이미지 수 = Sample_H + Sample_W
+prv_time = time.time()  # 시간출력용
+start_time = time.time()  # 시간출력용
 
-X = tf.placeholder(tf.float32, [batch_size, None])      # image
-Z = tf.placeholder(tf.float32, [None, n_noise])         # noize
+X = tf.placeholder(tf.float32, [batch_size, None])  # image
+Z = tf.placeholder(tf.float32, [None, n_noise])  # noize
 global_step = tf.Variable(0, trainable=False, name='global_step')
 
-def printTimepass(Prv_time):    #시간출력 함수
+
+def printTimepass(Prv_time):  # 시간출력 함수
     # now.(tm_year, tm_mon, tm_mday, tm_hour, tm_min, tm_sec, tm_wday, tm_yday
     #         몇년,    몇달,   몇일,    몇시,   몇분,   몇초, 무슨요일, 누적일
     now = time.localtime(time.time())
     print(int((time.time() - Prv_time) / 60), 'm', int((time.time() - Prv_time) % 60), 's   /  ',
           int((time.time() - start_time) / 3600), 'h', int(((time.time() - start_time) / 60) % 60), 'm   -  ',
-          now.tm_hour,'시',now.tm_min,'분')
+          now.tm_hour, '시', now.tm_min, '분')
     return time.time()
+
 
 def input_fn(filenames):
     dataset = tf.data.TFRecordDataset(filenames=filenames, num_parallel_reads=40)
@@ -52,57 +53,64 @@ def input_fn(filenames):
 
     return iterator
 
+
 def train_input_fn():
-    return input_fn(filenames=["train.tfrecords"])
+    return input_fn(filenames=["train.tfrecord"])
 
-#생성자
-def generator(noise_z, reuse= False, training= True):
+
+def generator(noise_z, reuse=False, training=True):
     with tf.variable_scope('G', reuse=reuse):
-
         x1 = tf.layers.dense(inputs=noise_z, units=4 * 4 * 1024)
-        x1 = tf.reshape(x1, [-1, 4, 4, 1024], name='reshape')                            ##  input = 4, 4, 1024
-        x1 = tf.layers.batch_normalization(x1, training=training)                        ## output = 4,4,1024
+        x1 = tf.reshape(x1, [-1, 4, 4, 1024], name='reshape')  ##  input = 4, 4, 1024
+        x1 = tf.layers.batch_normalization(x1, training=training)  ## output = 4,4,1024
         x1 = tf.maximum(x1, 0)
 
-        x2 = tf.layers.conv2d_transpose(inputs=x1, filters=512, kernel_size=5, strides=2, padding='same')##  input = 4,4,1024
-        x2 = tf.layers.batch_normalization(x2, training=training)                                            ## output = 8,8,512
+        x2 = tf.layers.conv2d_transpose(inputs=x1, filters=512, kernel_size=5, strides=2,
+                                        padding='same')  ##  input = 4,4,1024
+        x2 = tf.layers.batch_normalization(x2, training=training)  ## output = 8,8,512
         x2 = tf.maximum(x2, 0)
 
-        x3 = tf.layers.conv2d_transpose(inputs=x2, filters=256, kernel_size=5, strides=2, padding='same')   ##  input = 8,8,512
-        x3 = tf.layers.batch_normalization(x3, training=training)                                           ## output = 16,16,256
+        x3 = tf.layers.conv2d_transpose(inputs=x2, filters=256, kernel_size=5, strides=2,
+                                        padding='same')  ##  input = 8,8,512
+        x3 = tf.layers.batch_normalization(x3, training=training)  ## output = 16,16,256
         x3 = tf.maximum(x3, 0)
 
-        x4 = tf.layers.conv2d_transpose(inputs=x3, filters=128, kernel_size=5, strides=2, padding='same')   ##  input = 16,16,256
-        x4 = tf.layers.batch_normalization(x4, training=training)                                          ## output = 32,32,128
+        x4 = tf.layers.conv2d_transpose(inputs=x3, filters=128, kernel_size=5, strides=2,
+                                        padding='same')  ##  input = 16,16,256
+        x4 = tf.layers.batch_normalization(x4, training=training)  ## output = 32,32,128
         x4 = tf.maximum(x4, 0)
 
-        x5 = tf.layers.conv2d_transpose(inputs=x4, filters=3, kernel_size=5, strides=2, padding='same')   ##  input = 32,32,128
-       # x5 = tf.layers.batch_normalization(x5, training=training)                                          ## output = 64,64,3
-       # x5 = tf.maximum(x5, 0)
+        x5 = tf.layers.conv2d_transpose(inputs=x4, filters=3, kernel_size=5, strides=2,
+                                        padding='same')  ##  input = 32,32,128
+        # x5 = tf.layers.batch_normalization(x5, training=training)                                          ## output = 64,64,3
+        # x5 = tf.maximum(x5, 0)
 
-        outputs = tf.nn.tanh(x5)        # -1 <  < 1
-        Fake_image = (outputs + 1) /2   # 0 ~ 1 사이로 범위 맞춰줌
+        outputs = tf.nn.tanh(x5)  # -1 <  < 1
+        Fake_image = (outputs + 1) / 2  # 0 ~ 1 사이로 범위 맞춰줌
     return outputs, Fake_image
 
-#구분자
-def discriminator(inputs, reuse= False, training = True):
-    with tf.variable_scope('D', reuse=reuse):
 
+def discriminator(inputs, reuse=False, training=True):
+    with tf.variable_scope('D', reuse=reuse):
         inputs = tf.reshape(inputs, [-1, 64, 64, 3])
 
-        x1 = tf.layers.conv2d(inputs, filters=64, kernel_size=5, strides=2, use_bias=True, padding='same') ## input = 64, 64, 3
-        x1 = tf.maximum(x1, alpha * x1)                                                                   ## output = 32, 32, 64
+        x1 = tf.layers.conv2d(inputs, filters=64, kernel_size=5, strides=2, use_bias=True,
+                              padding='same')  ## input = 64, 64, 3
+        x1 = tf.maximum(x1, alpha * x1)  ## output = 32, 32, 64
 
-        x2 = tf.layers.conv2d(x1, filters=128, kernel_size=5, strides=2, use_bias=True, padding='Same') ## input = 32, 32, 64
-        x2 = tf.layers.batch_normalization(x2, training=training)                                      ## output = 16, 16, 128
+        x2 = tf.layers.conv2d(x1, filters=128, kernel_size=5, strides=2, use_bias=True,
+                              padding='Same')  ## input = 32, 32, 64
+        x2 = tf.layers.batch_normalization(x2, training=training)  ## output = 16, 16, 128
         x2 = tf.maximum(x2, alpha * x2)
 
-        x3 = tf.layers.conv2d(x2, filters=256, kernel_size=5, strides=2, use_bias=True, padding='same') ## input = 16, 16, 128
-        x3 = tf.layers.batch_normalization(x3, training=training)                                      ## output = 8, 8, 256
+        x3 = tf.layers.conv2d(x2, filters=256, kernel_size=5, strides=2, use_bias=True,
+                              padding='same')  ## input = 16, 16, 128
+        x3 = tf.layers.batch_normalization(x3, training=training)  ## output = 8, 8, 256
         x3 = tf.maximum(x3, alpha * x3)
 
-        x4 = tf.layers.conv2d(x3, filters=512, kernel_size=5, strides=2, use_bias=True, padding='same') ## input = 8, 8, 256
-        x4 = tf.maximum(x4, alpha * x4)                                                                  ## output = 4, 4, 512
+        x4 = tf.layers.conv2d(x3, filters=512, kernel_size=5, strides=2, use_bias=True,
+                              padding='same')  ## input = 8, 8, 256
+        x4 = tf.maximum(x4, alpha * x4)  ## output = 4, 4, 512
         x4_flat = tf.layers.flatten(x4)
 
         logits = tf.layers.dense(inputs=x4_flat, units=1)
@@ -110,20 +118,24 @@ def discriminator(inputs, reuse= False, training = True):
 
     return logits, outputs
 
-#노이즈 생성
+
 def get_noise(batch_size, n_noise):
     return np.random.uniform(-1., 1., size=(batch_size, n_noise))
 
-G, _ = generator(Z, reuse= False, training=True)        #학습용 이미지 제작
-_, G_image = generator(Z, reuse=True, training=False)   #저장용 이미지 제작
-D_logits_fake, D_outputs_fake = discriminator(G, reuse=False, training=True)   # 실값, 시그모이드
-D_logits_real, D_outputs_real = discriminator(X, reuse=True, training=True)    # 실값, 시그모이드
 
-d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_logits_real, labels= tf.ones_like(D_outputs_real)),name='Dl_real')
-d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_logits_fake, labels= tf.zeros_like(D_outputs_fake)),name='Dl_fake')
-g_loss      = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_logits_fake, labels= tf.ones_like(D_outputs_real)),name='Gl_real')
+G, _ = generator(Z, reuse=False, training=True)  # 학습용 이미지 제작
+_, G_image = generator(Z, reuse=True, training=False)  # 저장용 이미지 제작
+D_logits_fake, D_outputs_fake = discriminator(G, reuse=False, training=True)  # 실값, 시그모이드
+D_logits_real, D_outputs_real = discriminator(X, reuse=True, training=True)  # 실값, 시그모이드
 
-d_loss= d_loss_real + d_loss_fake
+d_loss_real = tf.reduce_mean(
+    tf.nn.sigmoid_cross_entropy_with_logits(logits=D_logits_real, labels=tf.ones_like(D_outputs_real)), name='Dl_real')
+d_loss_fake = tf.reduce_mean(
+    tf.nn.sigmoid_cross_entropy_with_logits(logits=D_logits_fake, labels=tf.zeros_like(D_outputs_fake)), name='Dl_fake')
+g_loss = tf.reduce_mean(
+    tf.nn.sigmoid_cross_entropy_with_logits(logits=D_logits_fake, labels=tf.ones_like(D_outputs_real)), name='Gl_real')
+
+d_loss = d_loss_real + d_loss_fake
 
 trainables = tf.trainable_variables()
 
@@ -131,10 +143,11 @@ d_vars = [var for var in trainables if var.name.startswith('D')]
 g_vars = [var for var in trainables if var.name.startswith('G')]
 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
     d_op = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5).minimize(d_loss, var_list=d_vars)
-    g_op = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5).minimize(g_loss, var_list=g_vars, global_step=global_step)
+    g_op = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5).minimize(g_loss, var_list=g_vars,
+                                                                                   global_step=global_step)
 
-tf.summary.scalar('cost_D_Real',d_loss_real)
-tf.summary.scalar('cost_D_Fake',d_loss_fake)
+tf.summary.scalar('cost_D_Real', d_loss_real)
+tf.summary.scalar('cost_D_Fake', d_loss_fake)
 tf.summary.scalar('cost_D', d_loss)
 tf.summary.scalar('cost_G', g_loss)
 
@@ -142,51 +155,53 @@ tf.summary.scalar('cost_G', g_loss)
 sess = tf.Session()
 saver = tf.train.Saver(tf.global_variables())
 
-ckpt = tf.train.get_checkpoint_state('./model3')
+ckpt = tf.train.get_checkpoint_state('./model1')
 if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
     saver.restore(sess, ckpt.model_checkpoint_path)
 else:
     sess.run(tf.global_variables_initializer())
 
 merged = tf.summary.merge_all()
-writer = tf.summary.FileWriter('./model3', sess.graph)
+writer = tf.summary.FileWriter('./model1', sess.graph)
 ##############▲△▲△ For TensorBoard ▲△▲△############################
 
 loss_val_D, loss_val_G = 0, 0
 iterator = train_input_fn()
 total_batch = int(120000 / batch_size)
+if not os.path.exists('./model1/' + '/images'):
+        os.mkdir('./model1' + '/images')
 for epoch in range(total_epoch):
 
     sess.run(iterator.initializer)  # 데이터 새로 불러옴
     next_element = iterator.get_next()
-    for i in range(total_batch):    # batch_size / 1 epoch
+    for i in range(total_batch):  # batch_size / 1 epoch
         try:
-            noise = get_noise(batch_size, n_noise)          # noise 받아오기
-            sess_image_data, _ = sess.run(next_element)     # image 데이터 받아오기
-
+            noise = get_noise(batch_size, n_noise)  # noise 받아오기
+            sess_image_data, _ = sess.run(next_element)  # image 데이터 받아오기
+            sess_image_data = sess_image_data/127.5 - 1
             if len(sess_image_data) != batch_size:  # 마지막 배치는 batch_size보다 작은데 이럴경우 오류남 그래서 이 배치는 버림
                 break
 
             _, loss_val_D = sess.run([d_op, d_loss], feed_dict={X: sess_image_data, Z: noise})
             _, loss_val_G = sess.run([g_op, g_loss], feed_dict={X: sess_image_data, Z: noise})
         except tf.errors.OutOfRangeError:
-            print(epoch+1, 'epoch')
+            print(epoch + 1, 'epoch')
             break
 
-        if i % 600 == 0:            # 약 0.5 epoch 마다
+        if i % 50 == 0:  # 약 0.5 epoch 마다
             prv_time = printTimepass(prv_time)  # 시간 프린트
 
             summary = sess.run(merged, feed_dict={X: sess_image_data, Z: noise})  # 1epoch 끝날때 실행해야됨
 
             writer.add_summary(summary, global_step=sess.run(global_step))
-            saver.save(sess, './model3/gan.ckpt', global_step=global_step)
+            saver.save(sess, './model1/gan.ckpt', global_step=global_step)
 
             noise = get_noise(Sample_H * Sample_W, n_noise)
             samples = sess.run(G_image, feed_dict={Z: noise})
-     
-            c = np.reshape(samples[0], (64, 64, 3))    
+
+            c = np.reshape(samples[0], (64, 64, 3))
             d = np.reshape(samples[1], (64, 64, 3))
-           # print(c-d)    # 생성된 이미지들이 각 픽셀마다 1e-4 정도의 값을 가질정도로 매우 비슷함
+            # print(c-d)    # 생성된 이미지들이 각 픽셀마다 1e-4 정도의 값을 가질정도로 매우 비슷함
 
             fig, ax = plt.subplots(Sample_H, Sample_W, figsize=(Sample_W, Sample_H))  # 이미지 저장 부분
             for sample_h in range(Sample_H):
@@ -194,8 +209,8 @@ for epoch in range(total_epoch):
                     ax[sample_h][sample_w].set_axis_off()
                     ax[sample_h][sample_w].imshow(np.reshape(samples[sample_h * Sample_W + sample_w], (64, 64, 3)))
 
-            plt.savefig('samples3/{}.png'.format(str((int(sess.run(global_step)))).zfill(3)), bbox_inches='tight')
+            plt.savefig('./model1/images/{}.png'.format(str((int(sess.run(global_step)))).zfill(3)), bbox_inches='tight')
             plt.close(fig)
-    print('epoch : ','%04d' % epoch, '  D loss: {:.4},'.format(loss_val_D),' G loss: {:.4}'.format(loss_val_G))
+    print('epoch : ', '%04d' % epoch, '  D loss: {:.4},'.format(loss_val_D), ' G loss: {:.4}'.format(loss_val_G))
 
 sess.close()
